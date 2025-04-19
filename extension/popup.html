@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Gmail Assistant</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Gmail Assistant</h1>
+
+        <!-- 新增：邮件列表区域 -->
+        <div id="email-list" class="email-list">
+            Loading emails...
+        </div>
+
+        <!-- 原聊天区域 -->
+        <div id="chat-container" class="chat-container"></div>
+
+        <div class="input-container">
+            <input type="text" id="user-input" placeholder="Ask about your emails...">
+            <button id="send-button">Send</button>
+        </div>
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html>
