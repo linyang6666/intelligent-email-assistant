@@ -19,7 +19,13 @@ class AIProcessor:
         context = "Here are the most recent emails:\n\n"
 
         for i, email in enumerate(emails[:10]):  # Use top 10 for immediate context
-            context += f"Email {i + 1}:\n"
+            # Add tag if available
+            tag_info = ""
+            if "tag" in email:
+                emoji = self.get_emoji_for_tag(email["tag"])
+                tag_info = f" [{emoji} {email['tag'].capitalize()}]"
+                
+            context += f"Email {i + 1}:{tag_info}\n"
             context += f"From: {email['sender']}\n"
             context += f"Subject: {email['subject']}\n"
             context += f"Snippet: {email['body'][:150]}...\n\n"
@@ -65,11 +71,28 @@ class AIProcessor:
         for i, e in enumerate(emails, 1):
             # 这里只取 id, subject, snippet
             snippet = e['body'][:100].replace('\n', ' ')
+            
+            # Add tag if available
+            tag_info = ""
+            if "tag" in e:
+                emoji = self.get_emoji_for_tag(e["tag"])
+                tag_info = f" [{emoji} {e['tag'].capitalize()}]"
+                
             ctx += (
-                f"邮件 {i}:\n"
+                f"邮件 {i}:{tag_info}\n"
                 f"  发件人: {e['sender']}\n"
                 f"  主题: {e['subject']}\n"
                 f"  摘要: {snippet}...\n\n"
             )
         ctx += "\n请直接给出垃圾邮件列表和综合摘要。"
         return ctx
+        
+    def get_emoji_for_tag(self, tag):
+        """Convert tag to emoji representation"""
+        emoji_map = {
+            "urgent": "⚠️",
+            "business": "💼",
+            "friendly": "😊",
+            "complaint": "😡"
+        }
+        return emoji_map.get(tag, "")
