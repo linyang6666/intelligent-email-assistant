@@ -10,6 +10,7 @@ from flask_cors import CORS
 # Import Gmail and AI processing modules
 from gmail_connector import GmailConnector
 from ai_processor import AIProcessor
+from email_classifier import EmailClassifier  # Import the new module
 
 app = Flask(__name__)
 CORS(app)
@@ -17,8 +18,10 @@ CORS(app)
 # Global service instances and email cache
 gmail_connector = None
 ai_processor = None
+email_classifier = None  # New classifier
 email_cache = []
 last_fetch_time = 0
+classified_emails = []  # Cache for classified emails
 
 
 def initialize_services():
@@ -26,7 +29,8 @@ def initialize_services():
     Initialize GmailConnector and AIProcessor instances.
     Authenticate Gmail access and fetch initial email cache.
     """
-    global gmail_connector, ai_processor
+    global gmail_connector, ai_processor, email_classifier
+
 
     gmail_connector = GmailConnector()
     try:
@@ -38,7 +42,9 @@ def initialize_services():
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         print("Warning: OPENAI_API_KEY not set")
+    
     ai_processor = AIProcessor(api_key)
+    email_classifier = EmailClassifier(api_key)  # Initialize the classifier
 
     refresh_email_cache()
 
@@ -47,7 +53,8 @@ def refresh_email_cache():
     """
     Refresh email cache if more than 5 minutes have passed since last fetch.
     """
-    global email_cache, last_fetch_time
+    global email_cache, last_fetch_time, classified_emails
+
     now = time.time()
     if now - last_fetch_time < 300:
         return
@@ -56,8 +63,23 @@ def refresh_email_cache():
         email_cache = gmail_connector.get_recent_emails(max_emails=100)
         last_fetch_time = now
         print(f"Email cache refreshed: {len(email_cache)} emails")
+        
+        # Classify emails in a non-blocking way
+        threading.Thread(target=classify_emails_background).start()
+        
     except Exception as e:
         print(f"Error refreshing email cache: {e}")
+
+
+def classify_emails_background():
+    """Background task to classify emails"""
+    global email_cache, classified_emails
+    try:
+        # Only classify the first 20 emails to save API costs
+        classified_emails = email_classifier.classify_emails(email_cache, max_emails=20)
+        print(f"Classified {len(classified_emails)} emails")
+    except Exception as e:
+        print(f"Error classifying emails: {e}")
 
 
 @app.route('/api/health', methods=['GET'])
@@ -83,7 +105,7 @@ def process_query():
 
     # Spam filtering path
     q_lower = query.lower()
-    if '垃圾邮件' in query or 'spam' in q_lower:
+    if 'junk mail' in query or 'spam' in q_lower:
         target = email_cache[:100]
         context = ai_processor.build_filter_summary_context(
             target,
@@ -94,8 +116,24 @@ def process_query():
         # General keyword-based email search
         relevant = ai_processor.search_emails(email_cache, query)
         if not relevant:
-            relevant = email_cache[:10]  # fallback
-        context = ai_processor.prepare_context(relevant, query)
+
+            relevant = email_cache[:10]
+            
+        # Try to use classified emails if available
+        emails_to_use = []
+        for email in relevant:
+            # Look for the classified version of this email
+            classified_version = next(
+                (e for e in classified_emails if e["id"] == email["id"]), 
+                None
+            )
+            if classified_version:
+                emails_to_use.append(classified_version)
+            else:
+                emails_to_use.append(email)
+                
+        context = ai_processor.prepare_context(emails_to_use, query)
+
         answer = ai_processor.query_openai(context, query)
 
     return jsonify({'answer': answer})
@@ -108,14 +146,51 @@ def get_emails():
     id, sender, subject, and snippet (first 100 characters of body).
     """
     refresh_email_cache()
+    
+    # Trying to use sorted mail
+    emails_to_return = []
+    
+    # Get IDs of the first 10 emails
+    top_email_ids = [e["id"] for e in email_cache[:10]]
+    
+    # For each ID, check if we have a classified version
+    for email_id in top_email_ids:
+        # Find classified version
+        classified_version = next(
+            (e for e in classified_emails if e["id"] == email_id), 
+            None
+        )
+        
+        # Find original version
+        original_version = next(
+            (e for e in email_cache if e["id"] == email_id),
+            None
+        )
+        
+        if classified_version:
+            emails_to_return.append(classified_version)
+        elif original_version:
+            emails_to_return.append(original_version)
+    
+    # Return to Simplified Fields：id, sender, subject, snippet, tag
+
     simplified = []
-    for e in email_cache[:10]:
-        simplified.append({
+    for e in emails_to_return:
+        email_data = {
             "id": e["id"],
             "sender": e["sender"],
             "subject": e["subject"],
-            "snippet": e["body"][:100]
-        })
+
+            "snippet": e["body"][:100] 
+        }
+        
+        # Add tag and emoji if available
+        if "tag" in e:
+            email_data["tag"] = e["tag"]
+            email_data["tagEmoji"] = email_classifier.get_emoji_for_tag(e["tag"])
+            
+        simplified.append(email_data)
+        
     return jsonify(simplified)
 
 
