@@ -4,18 +4,23 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import os
 
+# Load environment variables from openAI_Key.env
 load_dotenv('openAI_Key.env')
 
 class AIProcessor:
     def __init__(self, api_key=None):
-        # 初始化 OpenAI 客户端
+        """
+        Initialize the OpenAI API client using an environment variable or provided key.
+        """
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("OpenAI API key not found in environment")
         self.client = OpenAI(api_key=self.api_key)
 
     def prepare_context(self, emails, query):
-        """Prepare email context for the OpenAI query"""
+        """
+        Format the most recent emails and user query into a prompt for OpenAI.
+        """
         context = "Here are the most recent emails:\n\n"
 
         for i, email in enumerate(emails[:10]):  # Use top 10 for immediate context
@@ -34,7 +39,10 @@ class AIProcessor:
         return context
 
     def query_openai(self, context, query):
-        """Send the context and query to OpenAI and get a response"""
+        """
+        Query OpenAI with the formatted email context and user question.
+        Returns the generated response from the language model.
+        """
         try:
             resp = self.client.chat.completions.create(
                 model="gpt-4o-mini-2024-07-18",  # Use appropriate model
@@ -45,13 +53,14 @@ class AIProcessor:
                 max_tokens=500,
                 temperature=0.7
             )
-            # 提取并返回生成的文本
             return resp.choices[0].message.content.strip()
         except Exception as e:
             return f"Error processing question: {e}"
 
     def search_emails(self, emails, query):
-        """Search emails for relevant information to the query"""
+        """
+        Perform keyword-based search on emails to find relevant messages.
+        """
         relevant_emails = []
         keywords = query.lower().split()
 
@@ -64,12 +73,10 @@ class AIProcessor:
 
     def build_filter_summary_context(self, emails, instruction: str) -> str:
         """
-        构造一个 prompt，让 LLM 对给定的 emails 列表根据 instruction
-        进行垃圾邮件过滤和摘要。
+        Build a prompt context for spam filtering and summarization based on email content.
         """
         ctx = instruction + "\n\n"
         for i, e in enumerate(emails, 1):
-            # 这里只取 id, subject, snippet
             snippet = e['body'][:100].replace('\n', ' ')
             
             # Add tag if available
@@ -79,12 +86,12 @@ class AIProcessor:
                 tag_info = f" [{emoji} {e['tag'].capitalize()}]"
                 
             ctx += (
-                f"邮件 {i}:{tag_info}\n"
-                f"  发件人: {e['sender']}\n"
-                f"  主题: {e['subject']}\n"
-                f"  摘要: {snippet}...\n\n"
+                f"Email {i}:\n"
+                f"  From: {e['sender']}\n"
+                f"  Subject: {e['subject']}\n"
+                f"  Snippet: {snippet}...\n\n"
             )
-        ctx += "\n请直接给出垃圾邮件列表和综合摘要。"
+        ctx += "\nPlease give a direct spam list and a comprehensive summary."
         return ctx
         
     def get_emoji_for_tag(self, tag):
@@ -96,3 +103,4 @@ class AIProcessor:
             "complaint": "😡"
         }
         return emoji_map.get(tag, "")
+

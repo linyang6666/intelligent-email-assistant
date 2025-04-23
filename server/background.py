@@ -7,7 +7,7 @@ import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-# 相对导入重命名后的模块
+# Import Gmail and AI processing modules
 from gmail_connector import GmailConnector
 from ai_processor import AIProcessor
 from email_classifier import EmailClassifier  # Import the new module
@@ -15,7 +15,7 @@ from email_classifier import EmailClassifier  # Import the new module
 app = Flask(__name__)
 CORS(app)
 
-# 全局状态
+# Global service instances and email cache
 gmail_connector = None
 ai_processor = None
 email_classifier = None  # New classifier
@@ -25,8 +25,12 @@ classified_emails = []  # Cache for classified emails
 
 
 def initialize_services():
-    """初始化 Gmail 和 OpenAI 服务"""
+    """
+    Initialize GmailConnector and AIProcessor instances.
+    Authenticate Gmail access and fetch initial email cache.
+    """
     global gmail_connector, ai_processor, email_classifier
+
 
     gmail_connector = GmailConnector()
     try:
@@ -46,8 +50,11 @@ def initialize_services():
 
 
 def refresh_email_cache():
-    """每 5 分钟拉取一次最新邮件"""
+    """
+    Refresh email cache if more than 5 minutes have passed since last fetch.
+    """
     global email_cache, last_fetch_time, classified_emails
+
     now = time.time()
     if now - last_fetch_time < 300:
         return
@@ -77,34 +84,39 @@ def classify_emails_background():
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
+    """Simple health check endpoint."""
     return jsonify({'status': 'ok'})
 
 
 @app.route('/api/query', methods=['POST'])
 def process_query():
+    """
+    Process user query:
+    - If spam-related, instruct LLM to filter and summarize.
+    - Otherwise, search relevant emails or fall back to latest 10.
+    """
     data = request.json or {}
     query = data.get('query', '').strip()
     if not query:
         return jsonify({'error': 'No query provided'}), 400
 
-    # 刷新邮件缓存
+    # Ensure email cache is up-to-date
     refresh_email_cache()
 
-    # 如果用户想筛选垃圾邮件并摘要
+    # Spam filtering path
     q_lower = query.lower()
-    if '垃圾邮件' in query or 'spam' in q_lower:
-        # 从最近 100 封中筛选垃圾邮件并摘要
+    if 'junk mail' in query or 'spam' in q_lower:
         target = email_cache[:100]
         context = ai_processor.build_filter_summary_context(
             target,
-            instruction="请帮我从这 100 封邮件中筛选出垃圾邮件，并给出一个摘要。"
+            instruction="Please filter spam from the following 100 emails and generate a summary."
         )
         answer = ai_processor.query_openai(context, query)
     else:
-        # 普通检索：先关键词匹配
+        # General keyword-based email search
         relevant = ai_processor.search_emails(email_cache, query)
-        # 如果没匹配到，兜底使用最近 10 封
         if not relevant:
+
             relevant = email_cache[:10]
             
         # Try to use classified emails if available
@@ -121,6 +133,7 @@ def process_query():
                 emails_to_use.append(email)
                 
         context = ai_processor.prepare_context(emails_to_use, query)
+
         answer = ai_processor.query_openai(context, query)
 
     return jsonify({'answer': answer})
@@ -128,10 +141,13 @@ def process_query():
 
 @app.route('/api/emails', methods=['GET'])
 def get_emails():
-    """返回最近拉取到的前 10 封邮件"""
+    """
+    Return the latest 10 emails with simplified fields:
+    id, sender, subject, and snippet (first 100 characters of body).
+    """
     refresh_email_cache()
     
-    # 尝试使用已分类的邮件
+    # Trying to use sorted mail
     emails_to_return = []
     
     # Get IDs of the first 10 emails
@@ -156,14 +172,16 @@ def get_emails():
         elif original_version:
             emails_to_return.append(original_version)
     
-    # 返回简化字段：id, sender, subject, snippet, tag
+    # Return to Simplified Fields：id, sender, subject, snippet, tag
+
     simplified = []
     for e in emails_to_return:
         email_data = {
             "id": e["id"],
             "sender": e["sender"],
             "subject": e["subject"],
-            "snippet": e["body"][:100]  # 摘要
+
+            "snippet": e["body"][:100] 
         }
         
         # Add tag and emoji if available
@@ -177,5 +195,6 @@ def get_emails():
 
 
 if __name__ == "__main__":
+    # Start background thread to initialize services before serving requests
     threading.Thread(target=initialize_services).start()
     app.run(debug=True, port=5000)
