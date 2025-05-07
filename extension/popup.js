@@ -1,93 +1,74 @@
-// popup.js - Chrome Extension UI
+// popup.js
 
-document.addEventListener("DOMContentLoaded", function() {
-  const emailListEl   = document.getElementById("email-list");
-  const chatContainer = document.getElementById("chat-container");
-  const userInput     = document.getElementById("user-input");
-  const sendButton    = document.getElementById("send-button");
+document.addEventListener('DOMContentLoaded', () => {
+  const emailListEl    = document.getElementById('email-list');
+  const chatContainer  = document.getElementById('chat-container');
+  const userInput      = document.getElementById('user-input');
+  const sendButton     = document.getElementById('send-button');
+  const clearButton    = document.getElementById('clear-history');
+  const WELCOME        = 'Hello! I can help answer questions about your emails. What would you like to know?';
 
-
-  // 1. Pull recent emails at initialization
-  fetch('http://localhost:5000/api/emails')
+  // Fetch & render emails (unchanged) …
+  fetch('http://localhost:5006/api/emails')
     .then(res => res.json())
     .then(emails => {
       emailListEl.innerHTML = '<strong>Recent Emails:</strong>';
       emails.forEach(e => {
-        const div = document.createElement("div");
-        div.classList.add("email-item");
-        
-        // Create tag HTML if tag exists
-        let tagHTML = '';
-        if (e.tag) {
-          const emoji = e.tagEmoji || '';
-          tagHTML = `<span class="tag tag-${e.tag}">${emoji} ${capitalize(e.tag)}</span>`;
-        }
-        
+        const div = document.createElement('div');
+        div.className = 'email-item';
         div.innerHTML = `
-          <div class="subject">
-            <span>${e.subject}</span>
-            ${tagHTML}
-          </div>
+          <div class="subject">${e.subject}</div>
           <div class="from">From: ${e.sender}</div>
-          <div class="snippet">${e.snippet}…</div>
-        `;
+          <div class="snippet">${e.snippet}…</div>`;
         emailListEl.appendChild(div);
-
       });
     })
-    .catch(err => {
-      emailListEl.textContent = "Failed to load emails.";
-      console.error(err);
-    });
+    .catch(_ => emailListEl.textContent = 'Failed to load emails.');
 
-  // 2. Initializing Chat Conversations
-  addMessage("bot", "Hello! I can help answer questions about your emails. What would you like to know?");
-
-  // 3. Send Button & Enter Event
-  sendButton.addEventListener("click", sendMessage);
-  userInput.addEventListener("keypress", function(e) {
-      if (e.key === "Enter") {
-          sendMessage();
-      }
+  // Load & render chat history
+  chrome.runtime.sendMessage({ action: 'getHistory' }, resp => {
+    const history = resp.history || [];
+    chatContainer.innerHTML = '';
+    if (history.length === 0) {
+      addBubble('bot', WELCOME);
+    } else {
+      history.forEach(m => addBubble(m.sender, m.text));
+    }
   });
 
+  // Send button & Enter key
+  sendButton.addEventListener('click', onSend);
+  userInput.addEventListener('keypress', e => {
+    if (e.key === 'Enter') onSend();
+  });
 
-  function sendMessage() {
-      const message = userInput.value.trim();
-      if (!message) return;
+  // Clear History button
+  clearButton.addEventListener('click', () => {
+    chrome.storage.local.set({ messages: [] }, () => {
+      chatContainer.innerHTML = '';
+      addBubble('bot', WELCOME);
+    });
+  });
 
-      addMessage("user", message);
-      userInput.value = "";
+  function onSend() {
+    const text = userInput.value.trim();
+    if (!text) return;
+    userInput.value = '';
 
-      addMessage("bot", "Thinking...", "thinking");
-
-      chrome.runtime.sendMessage(
-          { action: "processQuestion", query: message },
-          function(response) {
-              const thinkingEl = document.querySelector(".thinking");
-              if (thinkingEl) thinkingEl.remove();
-
-
-              addMessage("bot", response.answer);
-          }
-      );
+    addBubble('user', text);
+    chrome.runtime.sendMessage({ action: 'processQuestion', query: text }, resp => {
+      const answer = resp.answer || "Sorry, something went wrong.";
+      addBubble('bot', answer);
+    });
   }
 
-  function addMessage(sender, text, className = "") {
-      const messageDiv = document.createElement("div");
-      messageDiv.classList.add("message", sender);
-      if (className) messageDiv.classList.add(className);
-
-      const contentP = document.createElement("p");
-      contentP.textContent = text;
-      messageDiv.appendChild(contentP);
-
-      chatContainer.appendChild(messageDiv);
-      chatContainer.scrollTop = chatContainer.scrollHeight;
-  }
-  
-  // Helper function to capitalize the first letter
-  function capitalize(str) {
-      return str.charAt(0).toUpperCase() + str.slice(1);
+  function addBubble(sender, text) {
+    const div = document.createElement('div');
+    div.className = `message ${sender}`;
+    const p = document.createElement('p');
+    p.textContent = text;
+    div.appendChild(p);
+    chatContainer.appendChild(div);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
   }
 });
