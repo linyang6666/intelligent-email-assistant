@@ -16,8 +16,18 @@ document.addEventListener('DOMContentLoaded', () => {
       emails.forEach(e => {
         const div = document.createElement('div');
         div.className = 'email-item';
+
+        let tagHTML = '';
+        if (e.tag && e.tag !== 'default') {
+          const emoji = e.tagEmoji || '';
+          tagHTML = `<span class="tag tag-${e.tag}">${emoji} ${capitalize(e.tag)}</span>`;
+        }
+
         div.innerHTML = `
-          <div class="subject">${e.subject}</div>
+          <div class="subject">
+            <span>${e.subject}</span>
+            ${tagHTML}
+          </div>
           <div class="from">From: ${e.sender}</div>
           <div class="snippet">${e.snippet}…</div>`;
         emailListEl.appendChild(div);
@@ -70,5 +80,9 @@ document.addEventListener('DOMContentLoaded', () => {
     div.appendChild(p);
     chatContainer.appendChild(div);
     chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  function capitalize(word) {
+    return word.charAt(0).toUpperCase() + word.slice(1);
   }
 });

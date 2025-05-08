@@ -100,7 +100,8 @@ class AIProcessor:
             "urgent": "⚠️",
             "business": "💼",
             "friendly": "😊",
-            "complaint": "😡"
+            "complaint": "😡",
+            "default": " "
         }
         return emoji_map.get(tag, "")
 

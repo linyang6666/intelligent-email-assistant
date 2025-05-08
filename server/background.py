@@ -141,57 +141,27 @@ def process_query():
 
 @app.route('/api/emails', methods=['GET'])
 def get_emails():
-    """
-    Return the latest 10 emails with simplified fields:
-    id, sender, subject, and snippet (first 100 characters of body).
-    """
     refresh_email_cache()
-    
-    # Trying to use sorted mail
+
+    top_ids = [e["id"] for e in email_cache[:10]]
     emails_to_return = []
-    
-    # Get IDs of the first 10 emails
-    top_email_ids = [e["id"] for e in email_cache[:10]]
-    
-    # For each ID, check if we have a classified version
-    for email_id in top_email_ids:
-        # Find classified version
-        classified_version = next(
-            (e for e in classified_emails if e["id"] == email_id), 
-            None
-        )
-        
-        # Find original version
-        original_version = next(
-            (e for e in email_cache if e["id"] == email_id),
-            None
-        )
-        
-        if classified_version:
-            emails_to_return.append(classified_version)
-        elif original_version:
-            emails_to_return.append(original_version)
-    
-    # Return to Simplified Fields：id, sender, subject, snippet, tag
 
-    simplified = []
-    for e in emails_to_return:
-        email_data = {
-            "id": e["id"],
-            "sender": e["sender"],
-            "subject": e["subject"],
+    for email_id in top_ids:
+        classified = next((e for e in classified_emails if e["id"] == email_id), None)
+        original = next((e for e in email_cache if e["id"] == email_id), None)
+        chosen = classified or original
+        if chosen:
+            tag = chosen.get("tag", "default")
+            emails_to_return.append({
+                "id": chosen["id"],
+                "sender": chosen["sender"],
+                "subject": chosen["subject"],
+                "snippet": chosen["body"][:100],
+                "tag": tag,
+                "tagEmoji": email_classifier.get_emoji_for_tag(tag)
+            })
 
-            "snippet": e["body"][:100] 
-        }
-        
-        # Add tag and emoji if available
-        if "tag" in e:
-            email_data["tag"] = e["tag"]
-            email_data["tagEmoji"] = email_classifier.get_emoji_for_tag(e["tag"])
-            
-        simplified.append(email_data)
-        
-    return jsonify(simplified)
+    return jsonify(emails_to_return)
 
 
 if __name__ == "__main__":
