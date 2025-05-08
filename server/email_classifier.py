@@ -14,7 +14,7 @@ class EmailClassifier:
         """
         Classify a batch of emails by intent and sentiment
         Returns emails with added 'tag' field containing one of:
-        'urgent', 'business', 'friendly', 'complaint'
+        'urgent', 'business', 'friendly', 'complaint', 'default'
         """
         # Only process up to max_emails
         emails_to_process = emails[:max_emails]
@@ -60,17 +60,17 @@ class EmailClassifier:
                 if 0 <= email_index < len(emails_to_process):
                     emails_to_process[email_index]["tag"] = tag
             
-            # Ensure all processed emails have a tag (default to 'business' if missing)
+            # Ensure all processed emails have a tag (default to 'default' if missing)
             for email in emails_to_process:
                 if "tag" not in email:
-                    email["tag"] = "business"
+                    email["tag"] = "default"
                     
             return emails_to_process
             
         except Exception as e:
             # On error, return the original emails with default tags
             for email in emails_to_process:
-                email["tag"] = "business"  # Default tag
+                email["tag"] = "default"  # Default tag
             print(f"Error classifying emails: {e}")
             return emails_to_process
             
@@ -80,6 +80,7 @@ class EmailClassifier:
             "urgent": "⚠️",
             "business": "💼",
             "friendly": "😊",
-            "complaint": "😡"
+            "complaint": "😡",
+            "default": " "
         }
         return emoji_map.get(tag, "")
