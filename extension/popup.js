@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const WELCOME        = 'Hello! I can help answer questions about your emails. What would you like to know?';
 
   // Fetch & render emails (unchanged) …
-  fetch('http://localhost:5006/api/emails')
+  fetch('http://127.0.0.1:5000/api/emails')
     .then(res => res.json())
     .then(emails => {
       emailListEl.innerHTML = '<strong>Recent Emails:</strong>';
