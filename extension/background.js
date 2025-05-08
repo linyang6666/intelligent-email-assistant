@@ -24,7 +24,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
 
     // 2. Call your Flask endpoint
-    fetch('http://localhost:5006/api/query', {
+    fetch('http://127.0.0.1:5000/api//query', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query })
