@@ -14,7 +14,7 @@ class EmailClassifier:
         """
         Classify a batch of emails by intent and sentiment
         Returns emails with added 'tag' field containing one of:
-        'urgent', 'business', 'friendly', 'complaint', 'default'
+        'urgent', 'business', 'friendly', 'complaint', 'default', 'spam'
         """
         # Only process up to max_emails
         emails_to_process = emails[:max_emails]
@@ -28,13 +28,27 @@ class EmailClassifier:
             email_texts.append(email_text)
         
         context = "Classify each email into exactly one of these categories:\n"
-        context += "1. urgent - Time-sensitive or critical matter requiring immediate attention\n"
-        context += "2. business - Professional or work-related correspondence\n"
-        context += "3. friendly - Personal, social, or positive in nature\n"
-        context += "4. complaint - Expressing dissatisfaction or raising an issue\n\n"
+        context += "1. spam - Unwanted or promotional email, scams, or irrelevant content\n"
+        context += "2. urgent - Time-sensitive or critical matter requiring immediate attention\n"
+        context += "3. business - Professional or work-related correspondence\n"
+        context += "4. friendly - Personal, social, or positive in nature\n"
+        context += "5. complaint - Expressing dissatisfaction or raising an issue\n\n"
         context += "".join(email_texts)
         context += "\nReturn classifications in JSON format: {\"classifications\": [{\"email_index\": 1, \"tag\": \"urgent\"}, ...]}"
         
+
+        for i, email in enumerate(emails_to_process):
+            context += (
+                f"Email {i+1}:\nFrom: {email['sender']}\n"
+                f"Subject: {email['subject']}\n"
+                f"Snippet: {email['body'][:150]}...\n\n"
+            )
+
+        context += (
+            'Return classifications in JSON format:\n'
+            '{"classifications": [{"email_index": 1, "tag": "spam"}, ...]}'
+        )
+
         try:
             # Call OpenAI to classify emails
             resp = self.client.chat.completions.create(
@@ -73,10 +87,24 @@ class EmailClassifier:
                 email["tag"] = "default"  # Default tag
             print(f"Error classifying emails: {e}")
             return emails_to_process
+        
+    def is_spam(self, email):
+        """
+        Simple keyword-based spam detection.
+        Flags emails that contain common spammy words in subject/body.
+        """
+        spam_keywords = [
+            "unsubscribe", "promotion", "deal", "special offer", "limited time", 
+            "buy now", "discount", "click here", "free", "winner", "congratulations"
+        ]
+        subject = email.get("subject", "").lower()
+        body = email.get("body", "").lower()
+        
+        return any(kw in subject or kw in body for kw in spam_keywords)
             
     def get_emoji_for_tag(self, tag):
-        """Convert tag to emoji representation"""
         emoji_map = {
+            "spam": "🚫",
             "urgent": "⚠️",
             "business": "💼",
             "friendly": "😊",

@@ -71,6 +71,10 @@ h1 {
     background-color: #F44336;
     color: #fff;
 }
+.tag-spam {
+    background-color: #fbadad;
+    color: #F44336;
+  }
 
 .chat-container {
     flex: 1;

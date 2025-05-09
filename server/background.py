@@ -77,6 +77,11 @@ def classify_emails_background():
     try:
         # Only classify the first 20 emails to save API costs
         classified_emails = email_classifier.classify_emails(email_cache, max_emails=20)
+
+        # Add spam detection field
+        for email in classified_emails:
+            email["is_spam"] = email_classifier.is_spam(email)
+
         print(f"Classified {len(classified_emails)} emails")
     except Exception as e:
         print(f"Error classifying emails: {e}")
@@ -104,14 +109,26 @@ def process_query():
     refresh_email_cache()
 
     # Spam filtering path
+    # q_lower = query.lower()
+    # if 'junk mail' in query or 'spam' in q_lower:
+    #     target = email_cache[:100]
+    #     context = ai_processor.build_filter_summary_context(
+    #         target,
+    #         instruction="Please filter spam from the following 100 emails and generate a summary."
+    #     )
+    #     answer = ai_processor.query_openai(context, query)
     q_lower = query.lower()
-    if 'junk mail' in query or 'spam' in q_lower:
-        target = email_cache[:100]
-        context = ai_processor.build_filter_summary_context(
-            target,
-            instruction="Please filter spam from the following 100 emails and generate a summary."
-        )
-        answer = ai_processor.query_openai(context, query)
+    if 'spam' in q_lower or 'junk mail' in q_lower:
+        spam_emails = [e for e in classified_emails if e.get("is_spam")]
+        if not spam_emails:
+            return jsonify({'answer': "No spam emails found."})
+        
+        summary = "Here are the spam emails detected:\n\n"
+        for e in spam_emails[:5]:
+            summary += f"- From: {e['sender']}, Subject: {e['subject']}\n"
+        
+        return jsonify({'answer': summary})
+
     else:
         # General keyword-based email search
         relevant = ai_processor.search_emails(email_cache, query)
@@ -158,7 +175,8 @@ def get_emails():
                 "subject": chosen["subject"],
                 "snippet": chosen["body"][:100],
                 "tag": tag,
-                "tagEmoji": email_classifier.get_emoji_for_tag(tag)
+                "tagEmoji": email_classifier.get_emoji_for_tag(tag),
+                "is_spam": chosen.get("is_spam", False)
             })
 
     return jsonify(emails_to_return)

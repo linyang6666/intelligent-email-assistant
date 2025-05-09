@@ -23,6 +23,11 @@ document.addEventListener('DOMContentLoaded', () => {
           tagHTML = `<span class="tag tag-${e.tag}">${emoji} ${capitalize(e.tag)}</span>`;
         }
 
+        let spamTag = '';
+        if (e.is_spam) {
+          spamTag = `<span class="tag tag-spam">🚫 Spam</span>`;
+        }
+
         div.innerHTML = `
           <div class="subject">
             <span>${e.subject}</span>
