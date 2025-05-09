@@ -242,4 +242,30 @@ h1 {
   transform: translateY(-50%) rotate(90deg);
 }
 
+/* ----- Manual Label Dropdown ----- */
+#load-more, #view-eval {
+  width: calc(100% - 20px);
+  margin: 0 10px 10px;
+  padding: 8px;
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.email-item .tag-selector {
+  margin-top: 5px;
+  width: 100%;
+  font-size: 12px;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.email-item .save-status {
+  margin-left: 6px;
+  font-size: 12px;
+  vertical-align: middle;
+  color: green;
+}
 

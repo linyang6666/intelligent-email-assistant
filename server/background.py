@@ -3,6 +3,7 @@
 import threading
 import time
 import os
+import json
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -11,7 +12,7 @@ from flask_cors import CORS
 from gmail_connector import GmailConnector
 from ai_processor import AIProcessor
 from email_classifier import EmailClassifier  # Import the new module
-
+from collections import Counter
 app = Flask(__name__)
 CORS(app)
 
@@ -26,6 +27,20 @@ classified_emails = []  # Cache for classified emails
 todo_cache = []
 last_todo_time = 0
 
+LABELS_FILE = 'manual_labels.json'
+
+def load_manual_labels():
+    try:
+        with open(LABELS_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except:
+        return {}
+
+def save_manual_labels(labels):
+    with open(LABELS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(labels, f, ensure_ascii=False, indent=2)
+
+manual_labels = load_manual_labels()
 
 def initialize_services():
     """
@@ -191,27 +206,26 @@ def process_query():
 @app.route('/api/emails', methods=['GET'])
 def get_emails():
     refresh_email_cache()
+    offset = int(request.args.get('offset', 0))
+    limit  = int(request.args.get('limit', 10))
 
-    top_ids = [e["id"] for e in email_cache[:10]]
+    sliced = email_cache[offset: offset + limit]
     emails_to_return = []
+    for e in sliced:
+        manual = manual_labels.get(e["id"])
+        tag = manual or next((c for c in classified_emails if c["id"]==e["id"]), e).get("tag", "default")
 
-    for email_id in top_ids:
-        classified = next((e for e in classified_emails if e["id"] == email_id), None)
-        original = next((e for e in email_cache if e["id"] == email_id), None)
-        chosen = classified or original
-        if chosen:
-            tag = chosen.get("tag", "default")
-            emails_to_return.append({
-                "id": chosen["id"],
-                "sender": chosen["sender"],
-                "subject": chosen["subject"],
-                "snippet": chosen["body"][:100],
-                "tag": tag,
-                "tagEmoji": email_classifier.get_emoji_for_tag(tag),
-                "is_spam": chosen.get("is_spam", False)
-            })
-
+        emails_to_return.append({
+            "id": e["id"],
+            "sender": e["sender"],
+            "subject": e["subject"],
+            "snippet": e["body"][:100],
+            "tag": tag,
+            "tagEmoji": email_classifier.get_emoji_for_tag(tag),
+            "is_spam": e.get("is_spam", False)
+        })
     return jsonify(emails_to_return)
+
 
 @app.route('/api/todos', methods=['GET'])
 def get_todo_list():
@@ -232,7 +246,51 @@ def get_todo_list():
         return jsonify({'error': f'Failed to retrieve todos: {e}'}), 500
 
 
+@app.route('/api/label', methods=['POST'])
+def set_manual_label():
+    data = request.json or {}
+    email_id = data.get('id')
+    tag      = data.get('manual_tag')
+    if not email_id or not tag:
+        return jsonify({'error':'Missing parameters'}), 400
 
+    manual_labels[email_id] = tag
+    save_manual_labels(manual_labels)
+    return jsonify({'status':'ok'})
+
+@app.route('/api/eval', methods=['GET'])
+def evaluate_classification():
+    ids = set(manual_labels.keys()) & {e["id"] for e in classified_emails}
+    y_true, y_pred = [], []
+    for e in classified_emails:
+        if e["id"] in ids:
+            y_true.append(manual_labels[e["id"]])
+            y_pred.append(e["tag"])
+
+    labels = set(y_true) | set(y_pred)
+    stats = {lbl:{"TP":0,"FP":0,"FN":0} for lbl in labels}
+    for t,p in zip(y_true, y_pred):
+        if t == p:
+            stats[t]["TP"] += 1
+        else:
+            stats[p]["FP"] += 1
+            stats[t]["FN"] += 1
+
+    report = {}
+    total = len(y_true)
+    correct = sum(1 for t,p in zip(y_true,y_pred) if t==p)
+    report["accuracy"] = correct/total if total else None
+
+    for lbl in labels:
+        tp = stats[lbl]["TP"]
+        fp = stats[lbl]["FP"]
+        fn = stats[lbl]["FN"]
+        prec = tp/(tp+fp) if tp+fp else None
+        rec  = tp/(tp+fn) if tp+fn else None
+        f1   = 2*prec*rec/(prec+rec) if prec and rec else None
+        report[lbl] = {"precision":prec, "recall":rec, "f1":f1}
+
+    return jsonify(report)
 
 if __name__ == "__main__":
     # Start background thread to initialize services before serving requests

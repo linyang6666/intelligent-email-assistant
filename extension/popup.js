@@ -1,5 +1,3 @@
-// popup.js
-
 document.addEventListener('DOMContentLoaded', () => {
   const emailListEl   = document.getElementById('email-list');
   const chatContainer = document.getElementById('chat-container');
@@ -14,110 +12,99 @@ document.addEventListener('DOMContentLoaded', () => {
   const toggleBtn   = document.getElementById('todo-toggle');
   const refreshBtn  = document.getElementById('todo-refresh');
 
-  /**
-   * Render an array of to-do items into the UI.
-   * @param {string[]} items - List of to-do strings.
-   */
-  function renderTodos(items) {
-    // Clear current list
-    todoItemsEl.innerHTML = '';
-
-    if (!items || items.length === 0) {
-      // Display placeholder when there are no items
-      const li = document.createElement('li');
-      li.className = 'todo-item loading';
-      li.textContent = 'No to-dos found.';
-      todoItemsEl.appendChild(li);
-      return;
-    }
-
-    // Populate each to-do entry with a checkbox and text
-    items.forEach(text => {
-      const li = document.createElement('li');
-      li.className = 'todo-item';
-
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      // Toggle strikethrough on check/uncheck
-      checkbox.addEventListener('change', () => {
-        li.style.textDecoration = checkbox.checked ? 'line-through' : 'none';
-      });
-
-      const span = document.createElement('span');
-      // Remove any leading numbering (e.g., "1. ")
-      span.textContent = text.replace(/^\d+\.\s*/, '');
-
-      li.appendChild(checkbox);
-      li.appendChild(span);
-      todoItemsEl.appendChild(li);
-    });
-  }
+  // Pagination params
+  let offset = 0;
+  const limit = 10;
 
   /**
-   * Fetch To-Do list from backend and render it.
-   * @param {boolean} force - If true, bypass server cache via ?refresh=true.
+   * Load and render a batch of emails with pagination and manual labeling.
+   * @param {boolean} append - whether to append to existing list.
    */
-  function fetchTodos(force = false) {
-    // Show loading indicator
-    todoItemsEl.innerHTML = '<li class="todo-item loading">Refreshing to-dos…</li>';
-
-    const url = 'http://127.0.0.1:5000/api/todos' + (force ? '?refresh=true' : '');
-    fetch(url)
-      .then(res => res.json())
-      .then(data => {
-        const items = Array.isArray(data.todos) ? data.todos : [];
-        renderTodos(items);
-      })
-      .catch(error => {
-        console.error('Error fetching to-dos:', error);
-        renderTodos([]);  // fallback to empty state
-      });
-  }
-
-  // -----------------------
-  // Event Listeners
-  // -----------------------
-
-  // Collapse/expand To-Do panel
-  toggleBtn.addEventListener('click', () => {
-    todoListEl.classList.toggle('collapsed');
-  });
-
-  // Manual refresh button
-  refreshBtn.addEventListener('click', () => {
-    fetchTodos(true);
-  });
-
-  // -----------------------
-  // Initial Data Loading
-  // -----------------------
-
-  // 1. Load recent emails (unchanged logic)
-  fetch('http://127.0.0.1:5000/api/emails')
-    .then(res => res.json())
-    .then(emails => {
+  function loadEmails(append = false) {
+    if (!append) {
+      offset = 0;
       emailListEl.innerHTML = '<strong>Recent Emails:</strong>';
-      emails.forEach(e => {
-        const div = document.createElement('div');
-        div.className = 'email-item';
+    }
+    fetch(`http://127.0.0.1:5000/api/emails?offset=${offset}&limit=${limit}`)
+      .then(res => res.json())
+      .then(emails => {
+        emails.forEach(e => {
+          const div = document.createElement('div');
+          div.className = 'email-item';
+          div.dataset.id = e.id;
 
-        let tagHTML = '';
-        if (e.tag && e.tag !== 'default') {
-          const emoji = e.tagEmoji || '';
-          tagHTML = `<span class="tag tag-${e.tag}">${emoji} ${capitalize(e.tag)}</span>`;
-        }
+          let tagHTML = '';
+          if (e.tag && e.tag !== 'default') {
+            const emoji = e.tagEmoji || '';
+            tagHTML = `<span class="tag tag-${e.tag}">${emoji} ${capitalize(e.tag)}</span>`;
+          }
 
-        div.innerHTML = `
-          <div class="subject">
-            <span>${e.subject}</span>
-            ${tagHTML}
-          </div>
-          <div class="from">From: ${e.sender}</div>
-          <div class="snippet">${e.snippet}…</div>`;
-        emailListEl.appendChild(div);
+          div.innerHTML = `
+            <div class="subject">
+              <span>${e.subject}</span>
+              ${tagHTML}
+            </div>
+            <div class="from">From: ${e.sender}</div>
+            <div class="snippet">${e.snippet}...</div>
+          `;
+
+          // Manual labeling dropdown
+          const select = document.createElement('select');
+          select.className = 'tag-selector';
+          ['default','spam','urgent','business','friendly','complaint'].forEach(tag => {
+            const opt = document.createElement('option');
+            opt.value = tag;
+            opt.textContent = tag.charAt(0).toUpperCase() + tag.slice(1);
+            if (tag === e.tag) opt.selected = true;
+            select.appendChild(opt);
+          });
+          const status = document.createElement('span');
+          status.className = 'save-status';
+          select.addEventListener('change', () => {
+            fetch('http://127.0.0.1:5000/api/label', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ id: e.id, manual_tag: select.value })
+            })
+            .then(r => r.json())
+            .then(resp => {
+              status.textContent = resp.status === 'ok' ? '✓' : '✗';
+            })
+            .catch(() => {
+              status.textContent = '✗';
+            });
+          });
+          div.appendChild(select);
+          div.appendChild(status);
+
+          emailListEl.appendChild(div);
+        });
+        offset += limit;
+      })
+      .catch(() => {
+        emailListEl.innerHTML += '<div class="email-item">Failed to load emails.</div>';
       });
-    })
-    .catch(_ => emailListEl.textContent = 'Failed to load emails.');
+  }
+
+  // "More" button
+  document.getElementById('load-more').addEventListener('click', () => {
+    loadEmails(true);
+  });
+
+  // "View Eval Report" button
+  document.getElementById('view-eval').addEventListener('click', () => {
+    fetch('http://127.0.0.1:5000/api/eval')
+      .then(r => r.json())
+      .then(report => {
+        document.getElementById('eval-report').textContent = JSON.stringify(report, null, 2);
+      })
+      .catch(() => {
+        document.getElementById('eval-report').textContent = 'Failed to fetch report.';
+      });
+  });
+
+  // Initial load of emails
+  loadEmails(false);
 
   // 2. Load To-Do list without forcing cache
   fetchTodos(false);
@@ -133,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 4. Chat send & clear logic (unchanged)
+  // 4. Chat send & clear logic
   sendButton.addEventListener('click', onSend);
   userInput.addEventListener('keypress', e => {
     if (e.key === 'Enter') onSend();
@@ -146,14 +133,63 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // -----------------------
-  // Helper Functions
+  // Existing To-Do functions
   // -----------------------
+  function renderTodos(items) {
+    todoItemsEl.innerHTML = '';
+    if (!items || items.length === 0) {
+      const li = document.createElement('li');
+      li.className = 'todo-item loading';
+      li.textContent = 'No to-dos found.';
+      todoItemsEl.appendChild(li);
+      return;
+    }
+    items.forEach(text => {
+      const li = document.createElement('li');
+      li.className = 'todo-item';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.addEventListener('change', () => {
+        li.style.textDecoration = checkbox.checked ? 'line-through' : 'none';
+      });
+      const span = document.createElement('span');
+      span.textContent = text.replace(/^\d+\.\s*/, '');
+      li.appendChild(checkbox);
+      li.appendChild(span);
+      todoItemsEl.appendChild(li);
+    });
+  }
 
+  function fetchTodos(force = false) {
+    todoItemsEl.innerHTML = '<li class="todo-item loading">Refreshing to-dos...</li>';
+    const url = 'http://127.0.0.1:5000/api/todos' + (force ? '?refresh=true' : '');
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        const items = Array.isArray(data.todos) ? data.todos : [];
+        renderTodos(items);
+      })
+      .catch(error => {
+        console.error('Error fetching to-dos:', error);
+        renderTodos([]);
+      });
+  }
+
+  toggleBtn.addEventListener('click', () => {
+    todoListEl.classList.toggle('collapsed');
+  });
+
+  refreshBtn.addEventListener('click', () => {
+    fetchTodos(true);
+  });
+
+  // -----------------------
+  // Existing Chat functions
+  // -----------------------
   function onSend() {
     const text = userInput.value.trim();
     if (!text) return;
     userInput.value = '';
-
     addBubble('user', text);
     chrome.runtime.sendMessage({ action: 'processQuestion', query: text }, resp => {
       const answer = resp.answer || "Sorry, something went wrong.";
