@@ -23,6 +23,9 @@ email_cache = []
 last_fetch_time = 0
 classified_emails = []  # Cache for classified emails
 
+todo_cache = []
+last_todo_time = 0
+
 
 def initialize_services():
     """
@@ -70,6 +73,35 @@ def refresh_email_cache():
     except Exception as e:
         print(f"Error refreshing email cache: {e}")
 
+def refresh_todo_cache():
+    """
+    Generate and cache To-Do items based on latest emails.
+    Refreshes only if cache is older than 5 minutes.
+    """
+    global todo_cache, last_todo_time
+
+    now = time.time()
+    # Reuse cache if it was updated within the last 5 minutes
+    if now - last_todo_time < 300 and todo_cache:
+        return
+
+    # Ensure email cache is up‐to‐date
+    refresh_email_cache()
+
+    # Prepare email list for To-Do generation
+    emails = []
+    for e in email_cache[:10]:
+        classified = next((c for c in classified_emails if c["id"] == e["id"]), None)
+        emails.append(classified or e)
+
+    # Call AIProcessor to generate raw To-Do text
+    raw_output = ai_processor.generate_todo_list(emails, max_items=5)
+    # Split lines and filter out empty entries
+    todos = [line.strip() for line in raw_output.splitlines() if line.strip()]
+
+    # Update cache
+    todo_cache = todos
+    last_todo_time = now
 
 def classify_emails_background():
     """Background task to classify emails"""
@@ -181,8 +213,28 @@ def get_emails():
 
     return jsonify(emails_to_return)
 
+@app.route('/api/todos', methods=['GET'])
+def get_todo_list():
+    """
+    Return cached To-Do items, regenerating if cache expired or if force-refresh is requested.
+    """
+    # Check for manual refresh flag in query string
+    force_refresh = request.args.get('refresh', 'false').lower() == 'true'
+    if force_refresh:
+        # Invalidate cache timestamp so refresh_todo_cache() will regenerate
+        global last_todo_time
+        last_todo_time = 0
+
+    try:
+        refresh_todo_cache()
+        return jsonify({'todos': todo_cache})
+    except Exception as e:
+        return jsonify({'error': f'Failed to retrieve todos: {e}'}), 500
+
+
+
 
 if __name__ == "__main__":
     # Start background thread to initialize services before serving requests
     threading.Thread(target=initialize_services).start()
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5000, use_reloader=False)

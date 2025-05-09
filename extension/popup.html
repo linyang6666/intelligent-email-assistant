@@ -12,6 +12,22 @@
     <!-- Email list -->
     <div id="email-list" class="email-list">Loading emails...</div>
 
+    <div id="todo-list" class="todo-list">
+      <h2 class="todo-header">
+        <!-- 1) Your imported icon -->
+        <img src="icons/TodoList.png" alt="To-Do" class="todo-icon">
+        <!-- 2) The title text -->
+        <span>To-Do List</span>
+        <!-- 3) Manual Refresh Button -->
+        <button id="todo-refresh" class="todo-refresh">⟳</button>
+        <!-- 4) Toggle button at the end -->
+        <button id="todo-toggle" class="todo-toggle">▼</button>
+      </h2>
+      <ul id="todo-items" class="todo-items">
+        <li class="todo-item loading">Loading to-dos…</li>
+      </ul>
+    </div>
+
     <!-- Clear History button -->
     <div class="clear-container" style="text-align: right; padding: 5px 10px;">
       <button id="clear-history">Clear History</button>

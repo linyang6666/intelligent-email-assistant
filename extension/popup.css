@@ -132,3 +132,114 @@ h1 {
 .thinking {
     opacity: 0.7;
 }
+
+/* ----- To-Do List Styles ----- */
+.todo-list {
+  margin: 0 10px 10px;
+  padding: 10px;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Header row: icon + title + action buttons */
+.todo-list .todo-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  color: #333;
+  margin: 0 0 8px;
+  padding: 0;
+  padding-right: 60px;
+}
+
+/* Imported checklist icon */
+.todo-list .todo-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+}
+
+/* Title text */
+.todo-list .todo-header > span {
+}
+
+/* Manual refresh button styling */
+.todo-list .todo-refresh {
+  position: absolute;
+  top: 50%;
+  right: 32px;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px;
+}
+
+/* Collapse/expand button styling */
+.todo-list .todo-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px;
+}
+
+/* Remove default focus outline for both buttons */
+.todo-list .todo-refresh:focus,
+.todo-list .todo-toggle:focus {
+  outline: none;
+}
+
+/* The actual list container */
+.todo-list .todo-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Single item container */
+.todo-list .todo-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+/* Hover effect for actionable items */
+.todo-list .todo-item:not(.loading):hover {
+  background-color: #f0f4ff;
+}
+
+/* Checkbox spacing */
+.todo-list .todo-item input[type="checkbox"] {
+  margin-right: 8px;
+  width: 16px;
+  height: 16px;
+}
+
+/* Loading or empty state */
+.todo-list .todo-item.loading {
+  color: #888;
+  font-style: italic;
+}
+
+/* Hide list when collapsed */
+.todo-list.collapsed .todo-items {
+  display: none;
+}
+
+/* Rotate arrow when collapsed, keep vertical centering */
+.todo-list.collapsed .todo-toggle {
+  transform: translateY(-50%) rotate(90deg);
+}
+
+
