@@ -113,3 +113,25 @@ class AIProcessor:
         }
         return emoji_map.get(tag, "")
 
+    def generate_todo_list(self, emails, max_items=5):
+        """
+        Generate a concise To-Do list based on the most recent emails.
+        """
+        # Build the prompt with up to 10 email summaries
+        prompt = f"Here are the recent email summaries. Extract the top {max_items} action items as a numbered list (one per line):\n\n"
+        for idx, email in enumerate(emails[:10], start=1):
+            snippet = email['body'][:150].replace('\n', ' ')
+            prompt += (
+                f"{idx}. From: {email['sender']}, Subject: {email['subject']}, "
+                f"Snippet: {snippet}...\n"
+            )
+        prompt += (
+            "\nPlease return only the numbered To-Do list, for example:\n"
+            "1. Reply to Alice about the project update\n"
+            "2. Schedule a meeting with Bob regarding the budget\n"
+        )
+
+        # Reuse the existing query_openai method
+        return self.query_openai(prompt, "")
+
+

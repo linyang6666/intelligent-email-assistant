@@ -181,6 +181,30 @@ def get_emails():
 
     return jsonify(emails_to_return)
 
+@app.route('/api/todos', methods=['GET'])
+def get_todo_list():
+    """
+    Generate a To-Do list from the latest cached emails.
+    """
+    # Ensure the email cache is fresh
+    refresh_email_cache()
+
+    # Prepare up to 10 emails, preferring classified versions
+    emails = []
+    for e in email_cache[:10]:
+        classified = next((c for c in classified_emails if c["id"] == e["id"]), None)
+        emails.append(classified or e)
+
+    try:
+        # Call the AIProcessor to build the To-Do text
+        todo_text = ai_processor.generate_todo_list(emails, max_items=5)
+        # Split into lines and filter out any empty ones
+        todos = [line.strip() for line in todo_text.splitlines() if line.strip()]
+        return jsonify({'todos': todos})
+    except Exception as ex:
+        return jsonify({'error': f'Todo list generation failed: {ex}'}), 500
+
+
 
 if __name__ == "__main__":
     # Start background thread to initialize services before serving requests

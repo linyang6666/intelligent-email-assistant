@@ -2,11 +2,13 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   const emailListEl    = document.getElementById('email-list');
+  const todoItemsEl    = document.getElementById('todo-items');
   const chatContainer  = document.getElementById('chat-container');
   const userInput      = document.getElementById('user-input');
   const sendButton     = document.getElementById('send-button');
   const clearButton    = document.getElementById('clear-history');
   const WELCOME        = 'Hello! I can help answer questions about your emails. What would you like to know?';
+
 
   // Fetch & render emails (unchanged) …
   fetch('http://127.0.0.1:5000/api/emails')
@@ -39,6 +41,24 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     })
     .catch(_ => emailListEl.textContent = 'Failed to load emails.');
+
+  // Fetch & render To-Do list
+  fetch('http://127.0.0.1:5000/api/todos')
+    .then(res => res.json())
+    .then(data => {
+      if (data.todos) {
+        todoItemsEl.innerHTML = '';             // clear loading text
+        data.todos.forEach(item => {
+          const li = document.createElement('div');
+          li.className = 'email-item';          // reuse styling
+          li.textContent = item.replace(/^\d+\.\s*/, ''); // strip leading number
+          todoItemsEl.appendChild(li);
+        });
+      } else {
+        todoItemsEl.textContent = 'No to-dos found.';
+      }
+    })
+    .catch(_ => todoItemsEl.textContent = 'Failed to load to-dos.');
 
   // Load & render chat history
   chrome.runtime.sendMessage({ action: 'getHistory' }, resp => {
