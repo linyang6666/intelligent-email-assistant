@@ -269,3 +269,73 @@ h1 {
   color: green;
 }
 
+/* Bottom controls: evenly distribute three buttons */
+.bottom-controls {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 10px 10px;
+}
+
+/* Zoom Button */
+/* All small buttons */
+.small-btn {
+  flex: 1;
+  margin: 0 4px;
+  padding: 6px 0;
+  font-size: 13px;
+  background-color: #4285f4;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Arrow Edit Buttons */
+.edit-arrow {
+  background: none;
+  border: none;
+  font-size: 14px;
+  margin-left: 6px;
+  cursor: pointer;
+  color: #4285f4;
+}
+
+/* Dropdown boxes are hidden by default */
+.tag-selector {
+  display: none;
+  margin-top: 4px;
+  width: 100%;
+}
+
+/* Remove / no longer needed */
+.email-list-header {
+  display: none;
+}
+
+/* Edit button, right-aligned */
+.email-item {
+  position: relative;
+}
+
+.edit-btn {
+  position: absolute;
+  right: 8px;
+  top: 34px;
+  background: none;
+  border: none;
+  color: #4285f4;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.eval-report {
+  max-height: 150px;
+  overflow: auto;
+  background: #f9f9f9;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  margin: 0 10px 10px;
+}

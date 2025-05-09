@@ -17,49 +17,72 @@ document.addEventListener('DOMContentLoaded', () => {
   const limit = 10;
 
   /**
-   * Load and render a batch of emails with pagination and manual labeling.
-   * @param {boolean} append - whether to append to existing list.
-   */
+  * Load and render a page of emails, with manual labeling support.
+  * @param {boolean} append - If true, appends to existing list; otherwise resets list.
+  */
   function loadEmails(append = false) {
+    // Reset offset and clear list if not appending
     if (!append) {
       offset = 0;
       emailListEl.innerHTML = '<strong>Recent Emails:</strong>';
     }
+
+    // Fetch a page of emails from backend
     fetch(`http://127.0.0.1:5000/api/emails?offset=${offset}&limit=${limit}`)
       .then(res => res.json())
       .then(emails => {
+        // Iterate over each email and render
         emails.forEach(e => {
+          // Container for a single email item
           const div = document.createElement('div');
           div.className = 'email-item';
           div.dataset.id = e.id;
 
+          // Build HTML for subject, sender, and snippet
           let tagHTML = '';
           if (e.tag && e.tag !== 'default') {
             const emoji = e.tagEmoji || '';
             tagHTML = `<span class="tag tag-${e.tag}">${emoji} ${capitalize(e.tag)}</span>`;
           }
-
           div.innerHTML = `
             <div class="subject">
-              <span>${e.subject}</span>
-              ${tagHTML}
+                <span>${e.subject}</span>
+                ${tagHTML}
             </div>
             <div class="from">From: ${e.sender}</div>
             <div class="snippet">${e.snippet}...</div>
-          `;
+        ` ;
 
-          // Manual labeling dropdown
+          // Create "edit" arrow button to toggle the dropdown
+          const editBtn = document.createElement('button');
+          editBtn.className = 'edit-btn';
+          editBtn.textContent = '✎';    // or use '✎'
+
+          // Create the dropdown for manual labeling (initially hidden)
           const select = document.createElement('select');
           select.className = 'tag-selector';
-          ['default','spam','urgent','business','friendly','complaint'].forEach(tag => {
-            const opt = document.createElement('option');
-            opt.value = tag;
-            opt.textContent = tag.charAt(0).toUpperCase() + tag.slice(1);
-            if (tag === e.tag) opt.selected = true;
-            select.appendChild(opt);
-          });
+          select.style.display = 'none';  // hide by default
+
+          // Populate dropdown options
+          ['default', 'spam', 'urgent', 'business', 'friendly', 'complaint']
+            .forEach(tag => {
+              const opt = document.createElement('option');
+              opt.value = tag;
+              opt.textContent = tag.charAt(0).toUpperCase() + tag.slice(1);
+              if (tag === e.tag) opt.selected = true;
+              select.appendChild(opt);
+            });
+
+          // Create status indicator for save feedback
           const status = document.createElement('span');
           status.className = 'save-status';
+
+          // Toggle dropdown on click
+          editBtn.addEventListener('click', () => {
+            select.style.display = select.style.display === 'none' ? 'block' : 'none';
+          });
+
+          // Handle manual label changes
           select.addEventListener('change', () => {
             fetch('http://127.0.0.1:5000/api/label', {
               method: 'POST',
@@ -68,20 +91,28 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .then(r => r.json())
             .then(resp => {
+              // Show checkmark on success, cross on failure
               status.textContent = resp.status === 'ok' ? '✓' : '✗';
             })
             .catch(() => {
               status.textContent = '✗';
             });
           });
+
+          // Append arrow, dropdown, and status to the email item
+          div.appendChild(editBtn);
           div.appendChild(select);
           div.appendChild(status);
 
+          // Append the item to the list
           emailListEl.appendChild(div);
         });
+
+        // Advance offset for next page
         offset += limit;
       })
       .catch(() => {
+        // Show error if fetch fails
         emailListEl.innerHTML += '<div class="email-item">Failed to load emails.</div>';
       });
   }

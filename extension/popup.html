@@ -11,14 +11,6 @@
 
     <!-- Email list -->
     <div id="email-list" class="email-list">Loading emails...</div>
-    <button id="load-more">More</button>
-
-    <!-- View Appraisal Report -->
-    <div style="text-align:center; margin:8px 0;">
-      <button id="view-eval">View Eval Report</button>
-    </div>
-    <!-- Evaluation results display container -->
-    <pre id="eval-report" style="max-height:150px; overflow:auto; background:#f9f9f9; padding:8px; border:1px solid #ddd; border-radius:4px;"></pre>
 
     <div id="todo-list" class="todo-list">
       <h2 class="todo-header">
@@ -37,9 +29,13 @@
     </div>
 
     <!-- Clear History button -->
-    <div class="clear-container" style="text-align: right; padding: 5px 10px;">
-      <button id="clear-history">Clear History</button>
+    <div class="bottom-controls">
+      <button id="load-more" class="small-btn">More</button>
+      <button id="view-eval" class="small-btn">View Eval Report</button>
+      <button id="clear-history" class="small-btn">Clear History</button>
     </div>
+
+    <pre id="eval-report" class="eval-report"></pre>
 
     <!-- Chat area -->
     <div id="chat-container" class="chat-container"></div>

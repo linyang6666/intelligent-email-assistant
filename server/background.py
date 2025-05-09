@@ -119,19 +119,18 @@ def refresh_todo_cache():
     last_todo_time = now
 
 def classify_emails_background():
-    """Background task to classify emails"""
     global email_cache, classified_emails
     try:
-        # Only classify the first 20 emails to save API costs
-        classified_emails = email_classifier.classify_emails(email_cache, max_emails=20)
-
-        # Add spam detection field
+        classified_emails = email_classifier.classify_emails(
+            email_cache,
+            max_emails=len(email_cache)
+        )
         for email in classified_emails:
             email["is_spam"] = email_classifier.is_spam(email)
-
         print(f"Classified {len(classified_emails)} emails")
     except Exception as e:
         print(f"Error classifying emails: {e}")
+
 
 
 @app.route('/api/health', methods=['GET'])
