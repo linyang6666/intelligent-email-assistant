@@ -23,6 +23,9 @@ email_cache = []
 last_fetch_time = 0
 classified_emails = []  # Cache for classified emails
 
+todo_cache = []
+last_todo_time = 0
+
 
 def initialize_services():
     """
@@ -70,6 +73,35 @@ def refresh_email_cache():
     except Exception as e:
         print(f"Error refreshing email cache: {e}")
 
+def refresh_todo_cache():
+    """
+    Generate and cache To-Do items based on latest emails.
+    Refreshes only if cache is older than 5 minutes.
+    """
+    global todo_cache, last_todo_time
+
+    now = time.time()
+    # Reuse cache if it was updated within the last 5 minutes
+    if now - last_todo_time < 300 and todo_cache:
+        return
+
+    # Ensure email cache is up‐to‐date
+    refresh_email_cache()
+
+    # Prepare email list for To-Do generation
+    emails = []
+    for e in email_cache[:10]:
+        classified = next((c for c in classified_emails if c["id"] == e["id"]), None)
+        emails.append(classified or e)
+
+    # Call AIProcessor to generate raw To-Do text
+    raw_output = ai_processor.generate_todo_list(emails, max_items=5)
+    # Split lines and filter out empty entries
+    todos = [line.strip() for line in raw_output.splitlines() if line.strip()]
+
+    # Update cache
+    todo_cache = todos
+    last_todo_time = now
 
 def classify_emails_background():
     """Background task to classify emails"""
@@ -184,25 +216,18 @@ def get_emails():
 @app.route('/api/todos', methods=['GET'])
 def get_todo_list():
     """
-    Generate a To-Do list from the latest cached emails.
+    Return cached To-Do items, regenerating if the cache is stale.
     """
-    # Ensure the email cache is fresh
-    refresh_email_cache()
-
-    # Prepare up to 10 emails, preferring classified versions
-    emails = []
-    for e in email_cache[:10]:
-        classified = next((c for c in classified_emails if c["id"] == e["id"]), None)
-        emails.append(classified or e)
-
     try:
-        # Call the AIProcessor to build the To-Do text
-        todo_text = ai_processor.generate_todo_list(emails, max_items=5)
-        # Split into lines and filter out any empty ones
-        todos = [line.strip() for line in todo_text.splitlines() if line.strip()]
-        return jsonify({'todos': todos})
-    except Exception as ex:
-        return jsonify({'error': f'Todo list generation failed: {ex}'}), 500
+        # 1. Update cache (only really call LLM if it's been more than 5 minutes or the first request)
+        refresh_todo_cache()
+
+        # 2. directly return the to-do list in the cache
+        return jsonify({'todos': todo_cache})
+    except Exception as e:
+        # Returns 500 with an error message if an exception occurs
+        return jsonify({'error': f'Failed to retrieve todos: {e}'}), 500
+
 
 
 
