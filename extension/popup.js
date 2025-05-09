@@ -42,23 +42,55 @@ document.addEventListener('DOMContentLoaded', () => {
     })
     .catch(_ => emailListEl.textContent = 'Failed to load emails.');
 
-  // Fetch & render To-Do list
-  fetch('http://127.0.0.1:5000/api/todos')
-    .then(res => res.json())
-    .then(data => {
-      if (data.todos) {
-        todoItemsEl.innerHTML = '';             // clear loading text
-        data.todos.forEach(item => {
-          const li = document.createElement('div');
-          li.className = 'email-item';          // reuse styling
-          li.textContent = item.replace(/^\d+\.\s*/, ''); // strip leading number
-          todoItemsEl.appendChild(li);
+  // Fetch and render the To-Do list from backend
+fetch('http://127.0.0.1:5000/api/todos')
+  .then(response => response.json())
+  .then(data => {
+    const container = document.getElementById('todo-items');
+    // Clear any existing content (e.g., loading placeholder)
+    container.innerHTML = '';
+
+    if (Array.isArray(data.todos) && data.todos.length > 0) {
+      data.todos.forEach(item => {
+        const li = document.createElement('li');
+        li.className = 'todo-item';
+
+        // Create a checkbox to mark the item as completed
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.addEventListener('change', () => {
+          // Toggle strikethrough styling; persistence to storage can be added here
+          li.style.textDecoration = checkbox.checked ? 'line-through' : 'none';
         });
-      } else {
-        todoItemsEl.textContent = 'No to-dos found.';
-      }
-    })
-    .catch(_ => todoItemsEl.textContent = 'Failed to load to-dos.');
+
+        // Create a span for the to-do text
+        const textSpan = document.createElement('span');
+        // Strip any leading numbering (e.g., "1. ") from the item
+        textSpan.textContent = item.replace(/^\d+\.\s*/, '');
+
+        li.appendChild(checkbox);
+        li.appendChild(textSpan);
+        container.appendChild(li);
+      });
+    } else {
+      // Display message when no to-dos are available
+      const li = document.createElement('li');
+      li.className = 'todo-item loading';
+      li.textContent = 'No to-dos found.';
+      container.appendChild(li);
+    }
+  })
+  .catch(error => {
+    const container = document.getElementById('todo-items');
+    // Clear any partial content and show error message
+    container.innerHTML = '';
+    const li = document.createElement('li');
+    li.className = 'todo-item loading';
+    li.textContent = 'Failed to load to-dos.';
+    container.appendChild(li);
+    console.error('Error fetching to-dos:', error);
+  });
+
 
   // Load & render chat history
   chrome.runtime.sendMessage({ action: 'getHistory' }, resp => {

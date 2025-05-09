@@ -132,3 +132,60 @@ h1 {
 .thinking {
     opacity: 0.7;
 }
+
+/* ----- To-Do List Styles ----- */
+.todo-list {
+  margin: 0 10px 10px;
+  padding: 10px;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.todo-list h2 {
+  font-size: 14px;
+  color: #333;
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+}
+
+.todo-list h2::before {
+  content: "";
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  background: url('icons/TodoList.png') no-repeat center;
+  background-size: contain;
+  margin-right: 6px;
+}
+
+.todo-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.todo-item:not(.loading):hover {
+  background-color: #f0f4ff;
+}
+
+.todo-item input[type="checkbox"] {
+  margin-right: 8px;
+  width: 16px;
+  height: 16px;
+}
+
+.todo-item.loading {
+  color: #888;
+  font-style: italic;
+}
