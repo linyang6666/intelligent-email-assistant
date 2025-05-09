@@ -237,4 +237,4 @@ def get_todo_list():
 if __name__ == "__main__":
     # Start background thread to initialize services before serving requests
     threading.Thread(target=initialize_services).start()
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5000, use_reloader=False)
