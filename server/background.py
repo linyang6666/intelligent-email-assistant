@@ -216,16 +216,19 @@ def get_emails():
 @app.route('/api/todos', methods=['GET'])
 def get_todo_list():
     """
-    Return cached To-Do items, regenerating if the cache is stale.
+    Return cached To-Do items, regenerating if cache expired or if force-refresh is requested.
     """
-    try:
-        # 1. Update cache (only really call LLM if it's been more than 5 minutes or the first request)
-        refresh_todo_cache()
+    # Check for manual refresh flag in query string
+    force_refresh = request.args.get('refresh', 'false').lower() == 'true'
+    if force_refresh:
+        # Invalidate cache timestamp so refresh_todo_cache() will regenerate
+        global last_todo_time
+        last_todo_time = 0
 
-        # 2. directly return the to-do list in the cache
+    try:
+        refresh_todo_cache()
         return jsonify({'todos': todo_cache})
     except Exception as e:
-        # Returns 500 with an error message if an exception occurs
         return jsonify({'error': f'Failed to retrieve todos: {e}'}), 500
 
 

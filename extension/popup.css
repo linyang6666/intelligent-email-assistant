@@ -143,14 +143,16 @@ h1 {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-/* Header row: icon + title + toggle button */
+/* Header row: icon + title + action buttons */
 .todo-list .todo-header {
+  position: relative;
   display: flex;
   align-items: center;
   font-size: 14px;
   color: #333;
   margin: 0 0 8px;
   padding: 0;
+  padding-right: 60px;
 }
 
 /* Imported checklist icon */
@@ -162,21 +164,41 @@ h1 {
 
 /* Title text */
 .todo-list .todo-header > span {
-  /* No extra styling needed unless you want to adjust spacing */
 }
 
-/* Collapse/expand button positioned to the right */
-.todo-list .todo-toggle {
-  margin-left: auto;
+/* Manual refresh button styling */
+.todo-list .todo-refresh {
+  position: absolute;
+  top: 50%;
+  right: 32px;
+  transform: translateY(-50%);
   background: none;
   border: none;
   cursor: pointer;
   font-size: 14px;
-  line-height: 1;
   padding: 2px;
 }
 
-/* The actual list, hidden when collapsed */
+/* Collapse/expand button styling */
+.todo-list .todo-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px;
+}
+
+/* Remove default focus outline for both buttons */
+.todo-list .todo-refresh:focus,
+.todo-list .todo-toggle:focus {
+  outline: none;
+}
+
+/* The actual list container */
 .todo-list .todo-items {
   list-style: none;
   padding: 0;
@@ -192,7 +214,7 @@ h1 {
   transition: background-color 0.2s;
 }
 
-/* Hover state for non-loading items */
+/* Hover effect for actionable items */
 .todo-list .todo-item:not(.loading):hover {
   background-color: #f0f4ff;
 }
@@ -204,19 +226,20 @@ h1 {
   height: 16px;
 }
 
-/* Loading or empty state styling */
+/* Loading or empty state */
 .todo-list .todo-item.loading {
   color: #888;
   font-style: italic;
 }
 
-/* Hide the list when .collapsed is applied */
+/* Hide list when collapsed */
 .todo-list.collapsed .todo-items {
   display: none;
 }
 
-/* Rotate the toggle arrow when collapsed */
+/* Rotate arrow when collapsed, keep vertical centering */
 .todo-list.collapsed .todo-toggle {
-  transform: rotate(90deg);
+  transform: translateY(-50%) rotate(90deg);
 }
+
 

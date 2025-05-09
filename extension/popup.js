@@ -1,20 +1,98 @@
 // popup.js
 
 document.addEventListener('DOMContentLoaded', () => {
-  const emailListEl    = document.getElementById('email-list');
-  const chatContainer  = document.getElementById('chat-container');
-  const userInput      = document.getElementById('user-input');
-  const sendButton     = document.getElementById('send-button');
-  const clearButton    = document.getElementById('clear-history');
-  const WELCOME        = 'Hello! I can help answer questions about your emails. What would you like to know?';
-  const todoListEl   = document.getElementById('todo-list');
-  const toggleBtn    = document.getElementById('todo-toggle');
+  const emailListEl   = document.getElementById('email-list');
+  const chatContainer = document.getElementById('chat-container');
+  const userInput     = document.getElementById('user-input');
+  const sendButton    = document.getElementById('send-button');
+  const clearButton   = document.getElementById('clear-history');
+  const WELCOME       = 'Hello! I can help answer questions about your emails. What would you like to know?';
 
+  // To-Do related elements
+  const todoItemsEl = document.getElementById('todo-items');
+  const todoListEl  = document.getElementById('todo-list');
+  const toggleBtn   = document.getElementById('todo-toggle');
+  const refreshBtn  = document.getElementById('todo-refresh');
+
+  /**
+   * Render an array of to-do items into the UI.
+   * @param {string[]} items - List of to-do strings.
+   */
+  function renderTodos(items) {
+    // Clear current list
+    todoItemsEl.innerHTML = '';
+
+    if (!items || items.length === 0) {
+      // Display placeholder when there are no items
+      const li = document.createElement('li');
+      li.className = 'todo-item loading';
+      li.textContent = 'No to-dos found.';
+      todoItemsEl.appendChild(li);
+      return;
+    }
+
+    // Populate each to-do entry with a checkbox and text
+    items.forEach(text => {
+      const li = document.createElement('li');
+      li.className = 'todo-item';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      // Toggle strikethrough on check/uncheck
+      checkbox.addEventListener('change', () => {
+        li.style.textDecoration = checkbox.checked ? 'line-through' : 'none';
+      });
+
+      const span = document.createElement('span');
+      // Remove any leading numbering (e.g., "1. ")
+      span.textContent = text.replace(/^\d+\.\s*/, '');
+
+      li.appendChild(checkbox);
+      li.appendChild(span);
+      todoItemsEl.appendChild(li);
+    });
+  }
+
+  /**
+   * Fetch To-Do list from backend and render it.
+   * @param {boolean} force - If true, bypass server cache via ?refresh=true.
+   */
+  function fetchTodos(force = false) {
+    // Show loading indicator
+    todoItemsEl.innerHTML = '<li class="todo-item loading">Refreshing to-dos…</li>';
+
+    const url = 'http://127.0.0.1:5000/api/todos' + (force ? '?refresh=true' : '');
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        const items = Array.isArray(data.todos) ? data.todos : [];
+        renderTodos(items);
+      })
+      .catch(error => {
+        console.error('Error fetching to-dos:', error);
+        renderTodos([]);  // fallback to empty state
+      });
+  }
+
+  // -----------------------
+  // Event Listeners
+  // -----------------------
+
+  // Collapse/expand To-Do panel
   toggleBtn.addEventListener('click', () => {
     todoListEl.classList.toggle('collapsed');
   });
 
-  // Fetch & render emails (unchanged) …
+  // Manual refresh button
+  refreshBtn.addEventListener('click', () => {
+    fetchTodos(true);
+  });
+
+  // -----------------------
+  // Initial Data Loading
+  // -----------------------
+
+  // 1. Load recent emails (unchanged logic)
   fetch('http://127.0.0.1:5000/api/emails')
     .then(res => res.json())
     .then(emails => {
@@ -29,11 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
           tagHTML = `<span class="tag tag-${e.tag}">${emoji} ${capitalize(e.tag)}</span>`;
         }
 
-        let spamTag = '';
-        if (e.is_spam) {
-          spamTag = `<span class="tag tag-spam">🚫 Spam</span>`;
-        }
-
         div.innerHTML = `
           <div class="subject">
             <span>${e.subject}</span>
@@ -46,57 +119,10 @@ document.addEventListener('DOMContentLoaded', () => {
     })
     .catch(_ => emailListEl.textContent = 'Failed to load emails.');
 
-  // Fetch and render the To-Do list from backend
-fetch('http://127.0.0.1:5000/api/todos')
-  .then(response => response.json())
-  .then(data => {
-    const container = document.getElementById('todo-items');
-    // Clear any existing content (e.g., loading placeholder)
-    container.innerHTML = '';
+  // 2. Load To-Do list without forcing cache
+  fetchTodos(false);
 
-    if (Array.isArray(data.todos) && data.todos.length > 0) {
-      data.todos.forEach(item => {
-        const li = document.createElement('li');
-        li.className = 'todo-item';
-
-        // Create a checkbox to mark the item as completed
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.addEventListener('change', () => {
-          // Toggle strikethrough styling; persistence to storage can be added here
-          li.style.textDecoration = checkbox.checked ? 'line-through' : 'none';
-        });
-
-        // Create a span for the to-do text
-        const textSpan = document.createElement('span');
-        // Strip any leading numbering (e.g., "1. ") from the item
-        textSpan.textContent = item.replace(/^\d+\.\s*/, '');
-
-        li.appendChild(checkbox);
-        li.appendChild(textSpan);
-        container.appendChild(li);
-      });
-    } else {
-      // Display message when no to-dos are available
-      const li = document.createElement('li');
-      li.className = 'todo-item loading';
-      li.textContent = 'No to-dos found.';
-      container.appendChild(li);
-    }
-  })
-  .catch(error => {
-    const container = document.getElementById('todo-items');
-    // Clear any partial content and show error message
-    container.innerHTML = '';
-    const li = document.createElement('li');
-    li.className = 'todo-item loading';
-    li.textContent = 'Failed to load to-dos.';
-    container.appendChild(li);
-    console.error('Error fetching to-dos:', error);
-  });
-
-
-  // Load & render chat history
+  // 3. Load & render chat history
   chrome.runtime.sendMessage({ action: 'getHistory' }, resp => {
     const history = resp.history || [];
     chatContainer.innerHTML = '';
@@ -107,19 +133,21 @@ fetch('http://127.0.0.1:5000/api/todos')
     }
   });
 
-  // Send button & Enter key
+  // 4. Chat send & clear logic (unchanged)
   sendButton.addEventListener('click', onSend);
   userInput.addEventListener('keypress', e => {
     if (e.key === 'Enter') onSend();
   });
-
-  // Clear History button
   clearButton.addEventListener('click', () => {
     chrome.storage.local.set({ messages: [] }, () => {
       chatContainer.innerHTML = '';
       addBubble('bot', WELCOME);
     });
   });
+
+  // -----------------------
+  // Helper Functions
+  // -----------------------
 
   function onSend() {
     const text = userInput.value.trim();
