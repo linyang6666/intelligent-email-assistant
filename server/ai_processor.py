@@ -33,9 +33,17 @@ class AIProcessor:
             context += f"Email {i + 1}:{tag_info}\n"
             context += f"From: {email['sender']}\n"
             context += f"Subject: {email['subject']}\n"
-            context += f"Snippet: {email['body'][:150]}...\n\n"
+            context += f"Snippet: {email['body'][:300]}...\n\n"
 
-        context += f"\nUser question: {query}\n"
+        context += (
+            f"User question: {query}\n\n"
+            "Please answer the user's question in a helpful tone.\n"
+            "Then, add a summary of what the emails are about and suggest one helpful action the user might take.\n"
+            "Format your reply like this:\n"
+            "Summary: ...\n"
+            "Suggested Action: ..."
+        )
+
         return context
 
     def query_openai(self, context, query):
@@ -50,7 +58,7 @@ class AIProcessor:
                     {"role": "system", "content": "You are a helpful assistant that answers questions about emails."},
                     {"role": "user", "content": context}
                 ],
-                max_tokens=500,
+                max_tokens=400,
                 temperature=0.7
             )
             return resp.choices[0].message.content.strip()
