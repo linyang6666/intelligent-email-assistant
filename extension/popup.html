@@ -12,9 +12,15 @@
     <!-- Email list -->
     <div id="email-list" class="email-list">Loading emails...</div>
 
-      <!-- To-Do list -->
     <div id="todo-list" class="todo-list">
-      <h2>📝 To-Do List</h2>
+      <h2 class="todo-header">
+        <!-- 1) Your imported icon -->
+        <img src="icons/TodoList.png" alt="To-Do" class="todo-icon">
+        <!-- 2) The title text -->
+        <span>To-Do List</span>
+        <!-- 3) Toggle button at the end -->
+        <button id="todo-toggle" class="todo-toggle">▼</button>
+      </h2>
       <ul id="todo-items" class="todo-items">
         <li class="todo-item loading">Loading to-dos…</li>
       </ul>

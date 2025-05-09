@@ -2,13 +2,17 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   const emailListEl    = document.getElementById('email-list');
-  const todoItemsEl    = document.getElementById('todo-items');
   const chatContainer  = document.getElementById('chat-container');
   const userInput      = document.getElementById('user-input');
   const sendButton     = document.getElementById('send-button');
   const clearButton    = document.getElementById('clear-history');
   const WELCOME        = 'Hello! I can help answer questions about your emails. What would you like to know?';
+  const todoListEl   = document.getElementById('todo-list');
+  const toggleBtn    = document.getElementById('todo-toggle');
 
+  toggleBtn.addEventListener('click', () => {
+    todoListEl.classList.toggle('collapsed');
+  });
 
   // Fetch & render emails (unchanged) …
   fetch('http://127.0.0.1:5000/api/emails')

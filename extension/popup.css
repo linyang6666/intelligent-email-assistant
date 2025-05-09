@@ -140,34 +140,51 @@ h1 {
   background-color: #fff;
   border: 1px solid #ddd;
   border-radius: 6px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.todo-list h2 {
+/* Header row: icon + title + toggle button */
+.todo-list .todo-header {
+  display: flex;
+  align-items: center;
   font-size: 14px;
   color: #333;
   margin: 0 0 8px;
-  display: flex;
-  align-items: center;
+  padding: 0;
 }
 
-.todo-list h2::before {
-  content: "";
-  display: inline-block;
+/* Imported checklist icon */
+.todo-list .todo-icon {
   width: 20px;
   height: 20px;
-  background: url('icons/TodoList.png') no-repeat center;
-  background-size: contain;
   margin-right: 6px;
 }
 
-.todo-items {
+/* Title text */
+.todo-list .todo-header > span {
+  /* No extra styling needed unless you want to adjust spacing */
+}
+
+/* Collapse/expand button positioned to the right */
+.todo-list .todo-toggle {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px;
+}
+
+/* The actual list, hidden when collapsed */
+.todo-list .todo-items {
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
-.todo-item {
+/* Single item container */
+.todo-list .todo-item {
   display: flex;
   align-items: center;
   padding: 6px 4px;
@@ -175,17 +192,31 @@ h1 {
   transition: background-color 0.2s;
 }
 
-.todo-item:not(.loading):hover {
+/* Hover state for non-loading items */
+.todo-list .todo-item:not(.loading):hover {
   background-color: #f0f4ff;
 }
 
-.todo-item input[type="checkbox"] {
+/* Checkbox spacing */
+.todo-list .todo-item input[type="checkbox"] {
   margin-right: 8px;
   width: 16px;
   height: 16px;
 }
 
-.todo-item.loading {
+/* Loading or empty state styling */
+.todo-list .todo-item.loading {
   color: #888;
   font-style: italic;
 }
+
+/* Hide the list when .collapsed is applied */
+.todo-list.collapsed .todo-items {
+  display: none;
+}
+
+/* Rotate the toggle arrow when collapsed */
+.todo-list.collapsed .todo-toggle {
+  transform: rotate(90deg);
+}
+
